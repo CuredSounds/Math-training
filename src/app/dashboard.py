@@ -132,14 +132,14 @@ if st.button("Save Changes"):
     st.success("✅ Progress saved to dashboard.csv!")
     st.rerun()
 
-# --- Visualizations ---
+# --- Tabs Layout ---
+# --- Tabs Layout ---
 st.divider()
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Analytics", "✍️ Scratchpad", "📚 Classroom", "🏋️ Practice Arena", "🚀 Simulation Lab"])
 
-tab1, tab2 = st.tabs(["Analytics", "Scratchpad"])
-
+# --- Tab 1: Analytics ---
 with tab1:
     st.subheader("Analytics")
-
     # 1. Hours by Track
     hours_by_track = df.groupby("Track")["Planned Hours"].sum().reset_index()
     fig_track = px.bar(hours_by_track, x="Track", y="Planned Hours", title="Workload Distribution by Track")
@@ -151,6 +151,7 @@ with tab1:
     fig_status = px.pie(status_counts, values="Count", names="Status", title="Status Breakdown", hole=0.4)
     st.plotly_chart(fig_status, use_container_width=True)
 
+# --- Tab 2: Scratchpad ---
 with tab2:
     st.subheader("✍️ Scratchpad")
     st.markdown("Use your Wacom tablet or mouse to solve problems or take notes.")
@@ -165,7 +166,7 @@ with tab2:
     
     # Create a canvas component
     canvas_result = st_canvas(
-        fill_color="rgba(255, 165, 0, 0.3)",  # Fixed fill color with some opacity
+        fill_color="rgba(255, 165, 0, 0.3)",
         stroke_width=stroke_width,
         stroke_color=stroke_color,
         background_color=bg_color,
@@ -175,18 +176,15 @@ with tab2:
         key="canvas",
     )
 
-    # Do something interesting with the image data
+    # Save to Notes
     if canvas_result.image_data is not None:
         if st.button("Save to Notes"):
-            # Ensure notes directory exists
             if not os.path.exists(NOTES_DIR):
                 os.makedirs(NOTES_DIR)
             
-            # Save image
             img_data = canvas_result.image_data
             im = Image.fromarray(img_data.astype("uint8"), mode="RGBA")
             
-            # Generate filename with timestamp
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = os.path.join(NOTES_DIR, f"note_{timestamp}.png")
@@ -207,4 +205,131 @@ with tab2:
             selected_note = st.selectbox("View Note:", note_files)
             if selected_note:
                 st.image(os.path.join(NOTES_DIR, selected_note), caption=selected_note)
+
+# --- Tab 3: Classroom ---
+with tab3:
+    st.subheader("📚 Classroom")
+    st.markdown("Interactive lessons to visualize mathematical concepts.")
+    
+    from src.core.content import LessonManager
+    
+    if "lesson_manager" not in st.session_state:
+        st.session_state.lesson_manager = LessonManager()
+        
+    lm = st.session_state.lesson_manager
+    lessons = lm.get_lessons()
+    
+    col_sel1, col_sel2 = st.columns(2)
+    with col_sel1:
+        subject = st.selectbox("Subject", list(lessons.keys()))
+    with col_sel2:
+        topic = st.selectbox("Topic", lessons[subject])
+        
+    content = lm.get_lesson_content(subject, topic)
+    
+    st.divider()
+    st.markdown(f"## {content['title']}")
+    st.markdown(content['markdown'])
+    
+    if content['figure']:
+        # Interactive features for Calculus
+        if subject == "Calculus" and topic == "Derivatives Intuition":
+            x_val = st.slider("x value", -4.0, 4.0, 1.0, 0.1)
+            
+            # Re-generate figure based on slider (dynamic update)
+            import numpy as np
+            import plotly.graph_objects as go
+            
+            x = np.linspace(-5, 5, 100)
+            y = x**2
+            
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=x, y=y, mode='lines', name='f(x) = x^2'))
+            
+            x0 = x_val
+            y0 = x0**2
+            slope = 2*x0
+            y_tangent = slope * (x - x0) + y0
+            
+            fig.add_trace(go.Scatter(x=x, y=y_tangent, mode='lines', name=f'Tangent (Slope={slope:.1f})', line=dict(dash='dash', color='green')))
+            fig.add_trace(go.Scatter(x=[x0], y=[y0], mode='markers', name='Point', marker=dict(size=12, color='red')))
+            
+            fig.update_layout(title=f"Derivative at x={x0}", xaxis_title="x", yaxis_title="f(x)", 
+                              yaxis_range=[-5, 25])
+            st.plotly_chart(fig, use_container_width=True)
+            
+        else:
+            st.plotly_chart(content['figure'], use_container_width=True)
+
+# --- Tab 4: Practice Arena ---
+with tab4:
+    st.subheader("🏋️ Practice Arena")
+    st.markdown("Infinite practice problems generated on the fly.")
+
+    # Import generator inside the app to avoid circular imports if any
+    try:
+        from src.core.modules.math_foundations.generator import MathGenerator
+        
+        if "generator" not in st.session_state:
+            st.session_state.generator = MathGenerator()
+        
+        category = st.selectbox("Select Topic:", ["Calculus (Derivatives)", "Linear Algebra (Dot Product)"])
+        
+        if st.button("New Problem"):
+            st.session_state.current_problem = st.session_state.generator.get_problem(category)
+        
+        if "current_problem" in st.session_state:
+            problem = st.session_state.current_problem
+            st.markdown("### Question:")
+            st.latex(problem.get("question", ""))
+            
+            with st.expander("Show Answer"):
+                st.markdown("### Answer:")
+                st.latex(problem.get("answer", ""))
+    except ImportError:
+        st.error("Generator module not found. Check src/core/modules/math_foundations/generator.py")
+
+# --- Tab 5: Simulation Lab ---
+with tab5:
+    st.subheader("🚀 Rocket Trajectory Simulator")
+    st.markdown("Experiment with Physics and Calculus by launching virtual rockets.")
+    
+    col_config, col_plot = st.columns([1, 3])
+    
+    with col_config:
+        st.markdown("#### Vehicle Config")
+        thrust = st.slider("Engine Thrust (N)", 1000, 20000, 5000, step=500)
+        fuel_mass = st.slider("Fuel Mass (kg)", 10, 200, 50, step=5)
+        dry_mass = st.slider("Dry Mass (kg)", 10, 500, 100, step=10)
+        burn_time = st.slider("Burn Time (s)", 1.0, 30.0, 10.0, step=0.5)
+        
+        launch = st.button("🔥 LAUNCH", type="primary")
+        
+    with col_plot:
+        if launch:
+            # Run Simulation
+            try:
+                from src.core.modules.physics.simulation import RocketSimulator
+                sim = RocketSimulator(dry_mass, fuel_mass, thrust, burn_time)
+                results = sim.run()
+                
+                # Metrics
+                max_alt = results["Altitude (m)"].max()
+                max_vel = results["Velocity (m/s)"].max()
+                flight_time = results["Time (s)"].max()
+                
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Apogee (Max Alt)", f"{max_alt:.1f} m")
+                m2.metric("Top Speed", f"{max_vel:.1f} m/s")
+                m3.metric("Flight Duration", f"{flight_time:.1f} s")
+                
+                # Plot
+                fig = px.line(results, x="Time (s)", y=["Altitude (m)", "Velocity (m/s)"], 
+                              title="Flight Telemetry", labels={"value": "Magnitude"})
+                st.plotly_chart(fig, use_container_width=True)
+                
+            except ImportError:
+                 st.error("Physics module not found. Check src/core/modules/physics/simulation.py")
+        else:
+             st.info("Adjust parameters and click Launch to see the flight path.")
 
