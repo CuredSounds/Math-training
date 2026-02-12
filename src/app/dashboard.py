@@ -2,23 +2,47 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import os
+import sys
+
+# Add project root to path so we can import from src
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
+from src.core.logger import Logger
+
+# Initialize Logger
+logger = Logger().get_logger()
 
 # Page Config
 st.set_page_config(page_title="Math Foundations Tracker", layout="wide")
 
-# File Path
-CSV_FILE = "dashboard.csv"
+# File Path (Relative to src/app/dashboard.py -> ../../data/dashboard.csv)
+DATA_DIR = os.path.join(os.path.dirname(__file__), "../../data")
+CSV_FILE = os.path.join(DATA_DIR, "dashboard.csv")
+NOTES_DIR = os.path.join(DATA_DIR, "notes")
 
 def load_data():
-    if not os.path.exists(CSV_FILE):
-        return pd.DataFrame(columns=["Week", "Track", "Module", "Topic", "Planned Hours", "Status", "Output Lab"])
-    df = pd.read_csv(CSV_FILE)
-    # Ensure Link column is string (not float NaN) to avoid Streamlit errors
-    df["Output Lab"] = df["Output Lab"].fillna("")
-    return df
+    try:
+        if not os.path.exists(CSV_FILE):
+            logger.warning("Dashboard CSV not found, creating new one.")
+            return pd.DataFrame(columns=["Week", "Track", "Module", "Topic", "Planned Hours", "Status", "Output Lab"])
+        df = pd.read_csv(CSV_FILE)
+        # Ensure Link column is string to avoid Streamlit errors
+        df["Output Lab"] = df["Output Lab"].fillna("")
+        return df
+    except Exception as e:
+        logger.error(f"Failed to load data: {e}")
+        st.error("Failed to load data. Check logs.")
+        return pd.DataFrame()
 
 def save_data(df):
-    df.to_csv(CSV_FILE, index=False)
+    try:
+        if not os.path.exists(DATA_DIR):
+            os.makedirs(DATA_DIR)
+        df.to_csv(CSV_FILE, index=False)
+        logger.info("Dashboard data saved successfully.")
+    except Exception as e:
+        logger.error(f"Failed to save data: {e}")
+        st.error("Failed to save data. Check logs.")
 
 # Title
 st.title("📚 Math Foundations for ML & Data Science")
@@ -155,8 +179,8 @@ with tab2:
     if canvas_result.image_data is not None:
         if st.button("Save to Notes"):
             # Ensure notes directory exists
-            if not os.path.exists("notes"):
-                os.makedirs("notes")
+            if not os.path.exists(NOTES_DIR):
+                os.makedirs(NOTES_DIR)
             
             # Save image
             img_data = canvas_result.image_data
@@ -165,17 +189,22 @@ with tab2:
             # Generate filename with timestamp
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"notes/note_{timestamp}.png"
-            im.save(filename, "PNG")
-            st.success(f"Saved to {filename}!")
+            filename = os.path.join(NOTES_DIR, f"note_{timestamp}.png")
+            try:
+                im.save(filename, "PNG")
+                st.success(f"Saved to {filename}!")
+                logger.info(f"Saved note: {filename}")
+            except Exception as e:
+                logger.error(f"Failed to save note: {e}")
+                st.error("Failed to save note.")
             
     # Show saved notes
-    if os.path.exists("notes"):
+    if os.path.exists(NOTES_DIR):
         st.divider()
         st.subheader("Saved Notes")
-        note_files = sorted(os.listdir("notes"), reverse=True)
+        note_files = sorted(os.listdir(NOTES_DIR), reverse=True)
         if note_files:
             selected_note = st.selectbox("View Note:", note_files)
             if selected_note:
-                st.image(f"notes/{selected_note}", caption=selected_note)
+                st.image(os.path.join(NOTES_DIR, selected_note), caption=selected_note)
 
