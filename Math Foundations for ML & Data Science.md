@@ -31,7 +31,7 @@
 
 ### Dashboard
 
-[Learning Dashboard](Math%20Foundations%20for%20ML%20&%20Data%20Science%20%E2%80%94%20Training%20/Learning%20Dashboard%20547aa6b5414b43ce834ccdbf72acf745.csv)
+[Learning Dashboard](dashboard.csv)
 
 ---
 
@@ -146,3 +146,46 @@
 If you tell me your current level (e.g., “comfortable with algebra, rusty on calculus”), and how many hours per week you can commit, I can map this into a specific 8–16 week schedule.
 
 </aside>
+
+Yes, you *can* learn these in parallel, and with **20 hours/week** it can work well, as long as you do it in a way that avoids constant context switching.
+
+### **What works well in parallel (and why)**
+
+These pair nicely because they reinforce each other:
+
+* **Calculus \+ Linear Algebra**
+
+   Gradients live in calculus, but vectors, dot products, and matrices are the language you express them in.
+
+* **Probability \+ Statistics**
+
+   Probability gives the “model,” statistics is what you do with data using that model.
+
+A very practical parallel track is:
+
+* Track A: **Calculus \+ a little Linear Algebra**  
+* Track B: **Probability \+ Statistics \+ EDA**
+
+### **What usually *doesn’t* work well**
+
+* Doing **all four** (calc, linear algebra, probability, statistics) at full intensity at once.
+
+   Most people end up feeling “busy but not fluent,” and the practice volume per topic gets too low.
+
+### **A good 20 hrs/week split (2-track)**
+
+* **12 hrs/week**: Calculus (limits → derivatives → partials → gradients)  
+* **8 hrs/week**: Probability/Stats (distributions → expectation/variance → sampling/CI)
+
+Then “sneak in” linear algebra by using it inside your calculus and ML notebooks:
+
+* vectors, dot product, norms, matrix multiplication, least squares (no separate heavy track yet)
+
+### **A simple rule to keep it from getting messy**
+
+Only parallelize when:
+
+* Each track has **its own practice set**  
+* You do **one notebook lab per week total** that combines them (example: gradient descent on a loss, with plots and distributions of noise)
+
+If you tell me whether your goal is **ML-first (optimization/gradients ASAP)** or **traditional calculus (including integration sooner)**, I’ll map the parallel schedule into a clean 8–16 week plan with weekly outputs.
