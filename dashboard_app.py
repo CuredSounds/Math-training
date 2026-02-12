@@ -13,6 +13,8 @@ def load_data():
     if not os.path.exists(CSV_FILE):
         return pd.DataFrame(columns=["Week", "Track", "Module", "Topic", "Planned Hours", "Status", "Output Lab"])
     df = pd.read_csv(CSV_FILE)
+    # Ensure Link column is string (not float NaN) to avoid Streamlit errors
+    df["Output Lab"] = df["Output Lab"].fillna("")
     return df
 
 def save_data(df):
@@ -108,15 +110,72 @@ if st.button("Save Changes"):
 
 # --- Visualizations ---
 st.divider()
-st.subheader("Analytics")
 
-# 1. Hours by Track
-hours_by_track = df.groupby("Track")["Planned Hours"].sum().reset_index()
-fig_track = px.bar(hours_by_track, x="Track", y="Planned Hours", title="Workload Distribution by Track")
-st.plotly_chart(fig_track, use_container_width=True)
+tab1, tab2 = st.tabs(["Analytics", "Scratchpad"])
 
-# 2. Status Breakdown
-status_counts = df["Status"].value_counts().reset_index()
-status_counts.columns = ["Status", "Count"]
-fig_status = px.pie(status_counts, values="Count", names="Status", title="Status Breakdown", hole=0.4)
-st.plotly_chart(fig_status, use_container_width=True)
+with tab1:
+    st.subheader("Analytics")
+
+    # 1. Hours by Track
+    hours_by_track = df.groupby("Track")["Planned Hours"].sum().reset_index()
+    fig_track = px.bar(hours_by_track, x="Track", y="Planned Hours", title="Workload Distribution by Track")
+    st.plotly_chart(fig_track, use_container_width=True)
+
+    # 2. Status Breakdown
+    status_counts = df["Status"].value_counts().reset_index()
+    status_counts.columns = ["Status", "Count"]
+    fig_status = px.pie(status_counts, values="Count", names="Status", title="Status Breakdown", hole=0.4)
+    st.plotly_chart(fig_status, use_container_width=True)
+
+with tab2:
+    st.subheader("✍️ Scratchpad")
+    st.markdown("Use your Wacom tablet or mouse to solve problems or take notes.")
+
+    from streamlit_drawable_canvas import st_canvas
+    from PIL import Image
+
+    # Sidebar controls for drawing
+    stroke_width = st.slider("Stroke width: ", 1, 25, 3)
+    stroke_color = st.color_picker("Stroke color: ", "#000000")
+    bg_color = st.color_picker("Background color: ", "#ffffff")
+    
+    # Create a canvas component
+    canvas_result = st_canvas(
+        fill_color="rgba(255, 165, 0, 0.3)",  # Fixed fill color with some opacity
+        stroke_width=stroke_width,
+        stroke_color=stroke_color,
+        background_color=bg_color,
+        height=600,
+        width=800,
+        drawing_mode="freedraw",
+        key="canvas",
+    )
+
+    # Do something interesting with the image data
+    if canvas_result.image_data is not None:
+        if st.button("Save to Notes"):
+            # Ensure notes directory exists
+            if not os.path.exists("notes"):
+                os.makedirs("notes")
+            
+            # Save image
+            img_data = canvas_result.image_data
+            im = Image.fromarray(img_data.astype("uint8"), mode="RGBA")
+            
+            # Generate filename with timestamp
+            from datetime import datetime
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"notes/note_{timestamp}.png"
+            im.save(filename, "PNG")
+            st.success(f"Saved to {filename}!")
+            
+    # Show saved notes
+    if os.path.exists("notes"):
+        st.divider()
+        st.subheader("Saved Notes")
+        note_files = sorted(os.listdir("notes"), reverse=True)
+        if note_files:
+            selected_note = st.selectbox("View Note:", note_files)
+            if selected_note:
+                st.image(f"notes/{selected_note}", caption=selected_note)
+
